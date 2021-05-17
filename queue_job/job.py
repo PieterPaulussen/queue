@@ -316,7 +316,7 @@ class Job(object):
         job_.identity_key = stored.identity_key
         job_.worker_pid = stored.worker_pid
         job_.worker_hostname = stored.worker_hostname
-        job_.db_txid = stored.db_txid
+        job_.db_txid = stored.db_transaction_id.db_txid
         return job_
 
     def job_record_with_same_identity_key(self):
@@ -570,8 +570,6 @@ class Job(object):
             vals["eta"] = self.eta
         if self.identity_key:
             vals["identity_key"] = self.identity_key
-        if self.db_txid:
-            vals["db_txid"] = self.db_txid
 
         job_model = self.env["queue.job"]
         # The sentinel is used to prevent edition sensitive fields (such as
@@ -696,8 +694,10 @@ class Job(object):
         tx_id = self.get_db_txid()
         with odoo.sql_db.db_connect(self.env.cr.dbname).cursor() as separate_cr:
             separate_cr.execute(
-                "UPDATE queue_job SET db_txid = %(tx_id)s WHERE id = %(rec_id)s;",
-                {"tx_id": tx_id, "rec_id": db_record.id},
+                "INSERT INTO queue_job_transaction(create_date, create_uid, write_date,"
+                " write_uid, queue_job_id, db_txid) VALUES (now() at time zone 'UTC',"
+                "%(uid)s, now() at time zone 'UTC', %(uid)s, %(rec_id)s, %(tx_id)s)",
+                {"tx_id": tx_id, "rec_id": db_record.id, "uid": odoo.SUPERUSER_ID},
             )
             separate_cr.commit()
 

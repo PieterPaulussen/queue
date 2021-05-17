@@ -110,7 +110,11 @@ class QueueJob(models.Model):
     identity_key = fields.Char()
     worker_pid = fields.Integer()
     worker_hostname = fields.Char()
-    db_txid = fields.Char(string="Database transaction ID")
+    db_transaction_id = fields.One2many(
+        comodel_name="queue.job.transaction",
+        string="Database Transaction ID",
+        readonly=True,
+    )
 
     def init(self):
         self._cr.execute(
